@@ -41,8 +41,6 @@ void CSaveFileState::DoWork(CFileItem& item,
   {
     // only use original_listitem_url for Python, UPnP and Bluray sources
     std::string original = item.GetProperty("original_listitem_url").asString();
-    if (URIUtils::IsPlugin(original) || URIUtils::IsUPnP(original) || URIUtils::IsBluray(item.GetPath()))
-      progressTrackingFile = original;
   }
 
   if (!progressTrackingFile.empty())
@@ -67,19 +65,6 @@ void CSaveFileState::DoWork(CFileItem& item,
       }
       else
       {
-        if (URIUtils::IsPlugin(progressTrackingFile) && !(item.HasVideoInfoTag() && item.GetVideoInfoTag()->m_iDbId >= 0))
-        {
-          // FileItem from plugin can lack information, make sure all needed fields are set
-          CVideoInfoTag *tag = item.GetVideoInfoTag();
-          CStreamDetails streams = tag->m_streamDetails;
-          if (videodatabase.LoadVideoInfo(progressTrackingFile, *tag))
-          {
-            item.SetPath(progressTrackingFile);
-            item.ClearProperty("original_listitem_url");
-            tag->m_streamDetails = streams;
-          }
-        }
-
         bool updateListing = false;
         // No resume & watched status for livetv
         if (!item.IsLiveTV())
@@ -114,9 +99,9 @@ void CSaveFileState::DoWork(CFileItem& item,
               item.GetVideoInfoTag()->GetResumePoint().timeInSeconds != bookmark.timeInSeconds)
           {
             if (bookmark.timeInSeconds <= 0.0f)
-              videodatabase.ClearBookMarksOfFile(progressTrackingFile, CBookmark::RESUME);
+              videodatabase.ClearBookMarksOfFile(original ? item.HasProperty("original_listitem_url") : progressTrackingFile, CBookmark::RESUME);
             else
-              videodatabase.AddBookMarkToFile(progressTrackingFile, bookmark, CBookmark::RESUME);
+              videodatabase.AddBookMarkToFile(original ? item.HasProperty("original_listitem_url") : progressTrackingFile, bookmark, CBookmark::RESUME);
             if (item.HasVideoInfoTag())
               item.GetVideoInfoTag()->SetResumePoint(bookmark);
 
@@ -142,7 +127,7 @@ void CSaveFileState::DoWork(CFileItem& item,
           if (!videodatabase.GetStreamDetails(dbItem) ||
               dbItem.GetVideoInfoTag()->m_streamDetails != item.GetVideoInfoTag()->m_streamDetails)
           {
-            videodatabase.SetStreamDetailsForFile(item.GetVideoInfoTag()->m_streamDetails, progressTrackingFile);
+            videodatabase.SetStreamDetailsForFile(item.GetVideoInfoTag()->m_streamDetails, original ? item.HasProperty("original_listitem_url") : progressTrackingFile);
             updateListing = true;
           }
         }
