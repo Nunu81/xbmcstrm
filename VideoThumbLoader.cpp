@@ -132,8 +132,18 @@ bool CThumbExtractor::DoWork()
            !m_item.GetVideoInfoTag()->HasStreamDetails()))
   {
     // No tag or no details set, so extract them
-    CLog::Log(LOGDEBUG,"%s - trying to extract filestream details from video file %s", __FUNCTION__, CURL::GetRedacted(m_item.GetPath()).c_str());
-    result = CDVDFileInfo::GetFileStreamDetails(&m_item);
+    if (item.HasProperty("original_listitem_mediafile"))
+    {
+      std::string original = item.GetProperty("original_listitem_mediafile").asString();
+      m_item.SetPath(original);
+      CLog::Log(LOGDEBUG,"%s - trying to extract filestream details from video file %s", __FUNCTION__, CURL::GetRedacted(original));
+      result = CDVDFileInfo::GetFileStreamDetails(&m_item);
+    }
+    else
+	{
+      CLog::Log(LOGDEBUG,"%s - trying to extract filestream details from video file %s", __FUNCTION__, CURL::GetRedacted(m_item.GetPath()).c_str());
+      result = CDVDFileInfo::GetFileStreamDetails(&m_item);
+	}
   }
 
   if (result)
