@@ -127,13 +127,24 @@ bool CThumbExtractor::DoWork()
       }
     }
   }
-  else if (!m_item.IsPlugin() &&
+  else if (!item.HasProperty("original_listitem_mediafile") &&
+		   !m_item.IsPlugin() &&
            (!m_item.HasVideoInfoTag() ||
            !m_item.GetVideoInfoTag()->HasStreamDetails()))
   {
     // No tag or no details set, so extract them
-    CLog::Log(LOGDEBUG,"%s - trying to extract filestream details from video file %s", __FUNCTION__, CURL::GetRedacted(m_item.GetPath()).c_str());
-    result = CDVDFileInfo::GetFileStreamDetails(&m_item);
+    if (item.HasProperty("original_listitem_mediafile"))
+    {
+      std::string original = item.GetProperty("original_listitem_mediafile").asString();
+      m_item.SetPath(original);
+      CLog::Log(LOGDEBUG,"%s - trying to extract filestream details from video file %s", __FUNCTION__, CURL::GetRedacted(original));
+      result = CDVDFileInfo::GetFileStreamDetails(&m_item);
+    }
+    else
+	{
+      CLog::Log(LOGDEBUG,"%s - trying to extract filestream details from video file %s", __FUNCTION__, CURL::GetRedacted(m_item.GetPath()).c_str());
+      result = CDVDFileInfo::GetFileStreamDetails(&m_item);
+	}
   }
 
   if (result)
@@ -142,7 +153,7 @@ bool CThumbExtractor::DoWork()
     CVideoDatabase db;
     if (db.Open())
     {
-      if (URIUtils::IsStack(m_listpath))
+      if (URIUtils::IsStack(m_listpath) && !item.HasProperty("original_listitem_mediafile"))
       {
         // Don't know the total time of the stack, so set duration to zero to avoid confusion
         info->m_streamDetails.SetVideoDuration(0, 0);
@@ -151,8 +162,17 @@ bool CThumbExtractor::DoWork()
         m_item.SetPath(m_listpath);
       }
 
-      if (info->m_iFileId < 0)
-        db.SetStreamDetailsForFile(info->m_streamDetails, !info->m_strFileNameAndPath.empty() ? info->m_strFileNameAndPath : m_item.GetPath());
+      if (info->m_iFileId < 0 || item.HasProperty("original_listitem_mediafile"))
+	  {
+        if item.HasProperty("original_listitem_mediafile")
+		{
+          db.SetStreamDetailsForFile(info->m_streamDetails, item.GetProperty("original_listitem_url").asString());
+		}
+        else
+		{
+          db.SetStreamDetailsForFile(info->m_streamDetails, !info->m_strFileNameAndPath.empty() ? info->m_strFileNameAndPath : m_item.GetPath());
+		}
+	  }
       else
         db.SetStreamDetailsForFileId(info->m_streamDetails, info->m_iFileId);
 
