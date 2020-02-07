@@ -37,12 +37,11 @@ void CSaveFileState::DoWork(CFileItem& item,
     progressTrackingFile = item.GetVideoInfoTag()->m_strFileNameAndPath; // this variable contains removable:// suffixed by disc label+uniqueid or is empty if label not uniquely identified
   else if (item.HasVideoInfoTag() && item.IsVideoDb())
     progressTrackingFile = item.GetVideoInfoTag()->m_strFileNameAndPath; // we need the file url of the video db item to create the bookmark
-  else if (item.HasProperty("original_listitem_url"))
+  if (item.HasProperty("original_listitem_url"))
   {
     // only use original_listitem_url for Python, UPnP and Bluray sources
     std::string original = item.GetProperty("original_listitem_url").asString();
-    if (URIUtils::IsPlugin(original) || URIUtils::IsUPnP(original) || URIUtils::IsBluray(item.GetPath()))
-      progressTrackingFile = original;
+    progressTrackingFile = original;
   }
 
   if (!progressTrackingFile.empty())
@@ -142,8 +141,17 @@ void CSaveFileState::DoWork(CFileItem& item,
           if (!videodatabase.GetStreamDetails(dbItem) ||
               dbItem.GetVideoInfoTag()->m_streamDetails != item.GetVideoInfoTag()->m_streamDetails)
           {
-            videodatabase.SetStreamDetailsForFile(item.GetVideoInfoTag()->m_streamDetails, progressTrackingFile);
-            updateListing = true;
+			if (item.HasProperty("original_listitem_url"))
+			{
+			  int strmId = videodatabase.GetFileId(progressTrackingFile);
+			  videodatabase.SetStreamDetailsForFileId(item.GetVideoInfoTag()->m_streamDetails, strmId);
+              updateListing = true;
+			}
+			else
+			{
+              videodatabase.SetStreamDetailsForFile(item.GetVideoInfoTag()->m_streamDetails, progressTrackingFile);
+              updateListing = true;
+			}
           }
         }
 
