@@ -1107,14 +1107,17 @@ int CVideoDatabase::GetFileId(const std::string& strFilenameAndPath)
 
 int CVideoDatabase::GetFileId(const CFileItem &item)
 {
-  if (item.IsVideoDb() && item.HasVideoInfoTag())
+  std::string path = item.GetPath();
+  if (item.HasProperty("original_listitem_url"))
+    {
+      path = item.GetProperty("original_listitem_url").asString();
+    }
+  if (item.IsVideoDb() && item.HasVideoInfoTag() || item.HasProperty("original_listitem_url"))
   {
     if (item.GetVideoInfoTag()->m_iFileId != -1)
       return item.GetVideoInfoTag()->m_iFileId;
-    else
-      return GetFileId(item.GetVideoInfoTag()->m_strFileNameAndPath);
   }
-  return GetFileId(item.GetPath());
+  return GetFileId(path);
 }
 
 //********************************************************************************************************************************
@@ -3621,7 +3624,7 @@ int CVideoDatabase::GetDbId(const std::string &query)
 
 void CVideoDatabase::DeleteStreamDetails(int idFile)
 {
-    m_pDS->exec(PrepareSQL("delete from streamdetails where idFile=%i", idFile));
+  m_pDS->exec(PrepareSQL("DELETE FROM streamdetails WHERE idFile = %i", idFile));
 }
 
 void CVideoDatabase::DeleteSet(int idSet)
@@ -5907,7 +5910,7 @@ void CVideoDatabase::EraseVideoSettings(const CFileItem &item)
   {
     std::string sql = PrepareSQL("DELETE FROM settings WHERE idFile=%i", idFile);
 
-    CLog::Log(LOGINFO, "Deleting settings information for files %s", item.GetPath().c_str());
+    CLog::Log(LOGINFO, "Deleting settings information for files %s", CURL::GetRedacted(item.GetPath()).c_str());
     m_pDS->exec(sql);
   }
   catch (...)
